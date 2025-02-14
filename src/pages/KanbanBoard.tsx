@@ -1,12 +1,32 @@
 import { useState } from 'react';
-import { Input, Button, Layout, Typography, Row, Col } from 'antd';
+import { Input, Button, Layout, Typography, Row, Col, message } from 'antd';
 import Column from '../components/Column';
+import { fetchIssues } from '../api/github';
 
 const { Header, Content } = Layout;
 const { Title } = Typography;
 
+interface Issue {
+  id: number;
+  title: string;
+  number: number;
+  user: {
+    login: string;
+    avatar_url: string;
+  };
+  url: string;
+  assignee: null | { login: string };
+  state: 'open' | 'closed';
+}
+
 const KanbanBoard = () => {
   const [repoUrl, setRepoUrl] = useState('');
+  const [issues, setIssues] = useState<{ todo: Issue[]; inProgress: Issue[]; done: Issue[] }>({
+    todo: [],
+    inProgress: [],
+    done: [],
+  });
+  const [loading, setLoading] = useState(false);
 
   const issuesMock = [
     {
@@ -25,9 +45,27 @@ const KanbanBoard = () => {
     },
   ];
 
-  const handleLoadIssues = () => {
-    console.log('Загружаем задачи из:', repoUrl);
-    //    API
+  const handleLoadIssues = async () => {
+    if (!repoUrl.trim()) {
+      message.error('Please enter a GitHub repo URL');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const data = await fetchIssues(repoUrl);
+
+      const sortedIssues = {
+        todo: data.filter((issue: Issue) => !issue.assignee && issue.state === 'open'),
+        inProgress: data.filter((issue: Issue) => issue.assignee && issue.state === 'open'),
+        done: data.filter((issue: Issue) => issue.state === 'closed'),
+      };
+
+      setIssues(sortedIssues);
+    } catch (error) {
+      message.error('Failed to load issues');
+    }
+    setLoading(false);
   };
 
   return (
@@ -43,19 +81,19 @@ const KanbanBoard = () => {
           onChange={(e) => setRepoUrl(e.target.value)}
           style={{ marginBottom: '10px' }}
         />
-        <Button type="primary" onClick={handleLoadIssues} block>
-          Load Issues
+        <Button type="primary" onClick={handleLoadIssues} block loading={loading}>
+          {loading ? 'Loading...' : 'Load Issues'}
         </Button>
 
         <Row gutter={16} style={{ marginTop: '20px', display: 'flex', justifyContent: 'space-between' }}>
           <Col span={8}>
-            <Column title="ToDo" issues={issuesMock} />
+            <Column title="ToDo" issues={issues.todo.length ? issues.todo : issuesMock} />
           </Col>
           <Col span={8}>
-            <Column title="In Progress" issues={[]} />
+            <Column title="In Progress" issues={issues.inProgress} />
           </Col>
           <Col span={8}>
-            <Column title="Done" issues={[]} />
+            <Column title="Done" issues={issues.done} />
           </Col>
         </Row>
       </Content>
