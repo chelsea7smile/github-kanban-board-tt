@@ -1,0 +1,21 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* light and dark theme */
+body {
+  font-family: Arial, sans-serif;
+  transition: background 0.3s, color 0.3s;
+}
+
+body.light {
+  background: #fff;
+  color: #000;
+}
+
+body.dark {
+  background: #1a1a1a;
+  color: #fff;
+}
