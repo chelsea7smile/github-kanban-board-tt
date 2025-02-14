@@ -1,13 +1,25 @@
 import { Card, Typography } from 'antd';
+import IssueCard from './IssueCard';
 
 const { Title } = Typography;
 
-interface ColumnProps {
+interface Issue {
+  id: number;
   title: string;
-  children?: React.ReactNode;
+  number: number;
+  user: {
+    login: string;
+    avatar_url: string;
+  };
+  url: string;
 }
 
-const Column: React.FC<ColumnProps> = ({ title, children }) => {
+interface ColumnProps {
+  title: string;
+  issues: Issue[];
+}
+
+const Column: React.FC<ColumnProps> = ({ title, issues }) => {
   return (
     <Card
       title={
@@ -22,7 +34,15 @@ const Column: React.FC<ColumnProps> = ({ title, children }) => {
         padding: '10px',
       }}
     >
-      {children}
+      {issues.map((issue) => (
+        <IssueCard
+          key={issue.id}
+          title={issue.title}
+          number={issue.number}
+          user={issue.user}
+          url={issue.url}
+        />
+      ))}
     </Card>
   );
 };

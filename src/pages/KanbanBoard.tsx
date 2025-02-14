@@ -8,9 +8,26 @@ const { Title } = Typography;
 const KanbanBoard = () => {
   const [repoUrl, setRepoUrl] = useState('');
 
+  const issuesMock = [
+    {
+      id: 1,
+      title: 'Fix login bug',
+      number: 101,
+      user: { login: 'octocat', avatar_url: 'https://github.com/octocat.png' },
+      url: 'https://github.com/facebook/react/issues/101',
+    },
+    {
+      id: 2,
+      title: 'Improve UI layout',
+      number: 102,
+      user: { login: 'john-doe', avatar_url: 'https://github.com/john-doe.png' },
+      url: 'https://github.com/facebook/react/issues/102',
+    },
+  ];
+
   const handleLoadIssues = () => {
     console.log('Загружаем задачи из:', repoUrl);
-    // API
+    //    API
   };
 
   return (
@@ -31,14 +48,14 @@ const KanbanBoard = () => {
         </Button>
 
         <Row gutter={16} style={{ marginTop: '20px', display: 'flex', justifyContent: 'space-between' }}>
-          <Col span={8} style={{ minWidth: '300px', flex: 1 }}>
-            <Column title="ToDo" />
+          <Col span={8}>
+            <Column title="ToDo" issues={issuesMock} />
           </Col>
-          <Col span={8} style={{ minWidth: '300px', flex: 1 }}>
-            <Column title="In Progress" />
+          <Col span={8}>
+            <Column title="In Progress" issues={[]} />
           </Col>
-          <Col span={8} style={{ minWidth: '300px', flex: 1 }}>
-            <Column title="Done" />
+          <Col span={8}>
+            <Column title="Done" issues={[]} />
           </Col>
         </Row>
       </Content>
