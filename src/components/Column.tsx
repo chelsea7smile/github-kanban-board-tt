@@ -1,4 +1,5 @@
 import { Card, Typography } from 'antd';
+import { useDroppable } from '@dnd-kit/core';
 import IssueCard from './IssueCard';
 
 const { Title } = Typography;
@@ -17,11 +18,15 @@ interface Issue {
 interface ColumnProps {
   title: string;
   issues: Issue[];
+  columnId: string;
 }
 
-const Column: React.FC<ColumnProps> = ({ title, issues }) => {
+const Column: React.FC<ColumnProps> = ({ title, issues, columnId }) => {
+  const { setNodeRef } = useDroppable({ id: columnId, data: { column: columnId } });
+
   return (
     <Card
+      ref={setNodeRef}
       title={
         <div style={{ textAlign: 'center' }}>
           <Title level={4} style={{ margin: 0 }}>{title}</Title>
@@ -37,10 +42,12 @@ const Column: React.FC<ColumnProps> = ({ title, issues }) => {
       {issues.map((issue) => (
         <IssueCard
           key={issue.id}
+          id={issue.id}
           title={issue.title}
           number={issue.number}
           user={issue.user}
           url={issue.url}
+          columnId={columnId}
         />
       ))}
     </Card>

@@ -1,8 +1,11 @@
 import { Card, Typography, Avatar } from 'antd';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 const { Title, Text } = Typography;
 
 interface IssueCardProps {
+  id: number;
   title: string;
   number: number;
   user: {
@@ -10,13 +13,30 @@ interface IssueCardProps {
     avatar_url: string;
   };
   url: string;
+  columnId: string;
 }
 
-const IssueCard: React.FC<IssueCardProps> = ({ title, number, user, url }) => {
+const IssueCard: React.FC<IssueCardProps> = ({ id, title, number, user, url, columnId }) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: id.toString(),
+    data: { column: columnId },
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition: transition || 'transform 0.2s ease-in-out',
+    marginBottom: '10px',
+    cursor: 'grab',
+    opacity: isDragging ? 0.5 : 1,
+  };
+
   return (
     <Card
       hoverable
-      style={{ marginBottom: '10px' }}
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      style={style}
       onClick={() => window.open(url, '_blank')}
     >
       <Title level={5} style={{ marginBottom: '5px' }}>
