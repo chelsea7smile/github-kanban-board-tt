@@ -28,15 +28,16 @@ const Column: React.FC<ColumnProps> = ({ title, issues, columnId }) => {
     <Card
       ref={setNodeRef}
       title={
-        <div style={{ textAlign: 'center' }}>
+        <div style={{ textAlign: 'center', gap: '4px' }}>
           <Title level={4} style={{ margin: 0 }}>{title}</Title>
         </div>
       }
+      bodyStyle={{ padding: '16px' }}
       style={{
         width: '100%',
         minHeight: '400px',
         background: '#f0f2f5',
-        padding: '10px',
+        padding: '0px',
       }}
     >
       {issues.map((issue) => (

@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Input, Button, Layout, Typography, Row, Col, message } from 'antd';
-import { DndContext, closestCorners, DragOverlay } from '@dnd-kit/core';
+import { DndContext, closestCorners, DragOverlay, DragStartEvent, DragEndEvent } from '@dnd-kit/core';
 import { createPortal } from 'react-dom';
 import Column from '../components/Column';
 import IssueCard from '../components/IssueCard';
 import { fetchIssues } from '../api/github';
+import { useIssueStore } from '../store/useIssueStore';
 
 const { Header, Content } = Layout;
 const { Title } = Typography;
@@ -22,15 +23,25 @@ interface Issue {
   state: 'open' | 'closed';
 }
 
+const COLUMN_KEYS = ['todo', 'inProgress', 'done'] as const;
+type ColumnKey = (typeof COLUMN_KEYS)[number];
+
+const STORAGE_KEY_REPO = 'kanban_repo_url';
+
 const KanbanBoard = () => {
-  const [repoUrl, setRepoUrl] = useState<string>('');
-  const [issues, setIssues] = useState<Record<string, Issue[]>>({
-    todo: [],
-    inProgress: [],
-    done: [],
-  });
+  const [repoUrl, setRepoUrl] = useState<string>(() => localStorage.getItem(STORAGE_KEY_REPO) || '');
   const [loading, setLoading] = useState<boolean>(false);
-  const [activeIssue, setActiveIssue] = useState<Issue | null>(null);
+  const [activeIssueId, setActiveIssueId] = useState<number | null>(null);
+
+  const { issues, setIssues, loadIssuesFromStorage } = useIssueStore();
+
+  useEffect(() => {
+    loadIssuesFromStorage();
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY_REPO, repoUrl);
+  }, [repoUrl]);
 
   const handleLoadIssues = async () => {
     if (!repoUrl.trim()) {
@@ -40,9 +51,9 @@ const KanbanBoard = () => {
 
     setLoading(true);
     try {
-      const data = await fetchIssues(repoUrl);
+      const data: Issue[] = await fetchIssues(repoUrl);
 
-      const sortedIssues = {
+      const sortedIssues: Record<ColumnKey, Issue[]> = {
         todo: data.filter((issue: Issue) => !issue.assignee && issue.state === 'open'),
         inProgress: data.filter((issue: Issue) => issue.assignee && issue.state === 'open'),
         done: data.filter((issue: Issue) => issue.state === 'closed'),
@@ -55,36 +66,53 @@ const KanbanBoard = () => {
     setLoading(false);
   };
 
-  const handleDragStart = (event: any) => {
-    const { active } = event;
-    const columnId = active.data.current?.column;
-    if (!columnId) return;
+  const handleResetBoard = () => {
+    localStorage.removeItem(STORAGE_KEY_REPO);
+    setRepoUrl('');
 
-    const issue = issues[columnId].find((issue) => issue.id.toString() === active.id);
-    setActiveIssue(issue || null);
-  };
-
-  const handleDragEnd = (event: any) => {
-    setActiveIssue(null);
-    const { active, over } = event;
-    if (!over) return;
-
-    const sourceColumnId = active.data.current?.column;
-    const destinationColumnId = over.data.current?.column;
-
-    if (!sourceColumnId || !destinationColumnId || sourceColumnId === destinationColumnId) return;
-
-    setIssues((prevIssues) => {
-      const updatedIssues = { ...prevIssues };
-      const movedIssueIndex = updatedIssues[sourceColumnId].findIndex((issue) => issue.id.toString() === active.id);
-      if (movedIssueIndex === -1) return prevIssues;
-
-      const [movedIssue] = updatedIssues[sourceColumnId].splice(movedIssueIndex, 1);
-      updatedIssues[destinationColumnId].push(movedIssue);
-
-      return updatedIssues;
+    setIssues({
+      todo: [],
+      inProgress: [],
+      done: [],
     });
+
+    message.success('Board has been reset.');
   };
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveIssueId(Number(event.active.id));
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    setActiveIssueId(null);
+    if (!event.over) return;
+  
+    const activeId = Number(event.active.id);
+    const sourceColumnId = event.active.data.current?.column as ColumnKey;
+    const destinationColumnId = event.over.data.current?.column as ColumnKey;
+  
+    if (!sourceColumnId || !destinationColumnId || sourceColumnId === destinationColumnId) return;
+  
+    const updatedIssues: Record<ColumnKey, Issue[]> = {
+      todo: [...issues.todo],
+      inProgress: [...issues.inProgress],
+      done: [...issues.done],
+    };
+  
+    const movedIssueIndex = updatedIssues[sourceColumnId].findIndex((issue) => issue.id === activeId);
+    if (movedIssueIndex === -1) return;
+  
+    const [movedIssue] = updatedIssues[sourceColumnId].splice(movedIssueIndex, 1);
+    updatedIssues[destinationColumnId] = [...updatedIssues[destinationColumnId], movedIssue];
+  
+    setIssues(updatedIssues);
+  };
+
+  const activeIssue: Issue | null =
+    issues.todo.find((issue: Issue) => issue.id === activeIssueId) ||
+    issues.inProgress.find((issue: Issue) => issue.id === activeIssueId) ||
+    issues.done.find((issue: Issue) => issue.id === activeIssueId) ||
+    null;
 
   return (
     <Layout style={{ minHeight: '100vh', padding: '20px' }}>
@@ -103,26 +131,35 @@ const KanbanBoard = () => {
           {loading ? 'Loading...' : 'Load Issues'}
         </Button>
 
+        <Button 
+          danger 
+          onClick={handleResetBoard} 
+          block 
+          style={{ marginTop: '10px' }}
+        >
+          Reset Board
+        </Button>
+
         <DndContext 
           collisionDetection={closestCorners} 
           onDragStart={handleDragStart} 
           onDragEnd={handleDragEnd}
         >
-          <Row gutter={16} style={{ marginTop: '20px', display: 'flex', justifyContent: 'space-between' }}>
-            <Col span={8}>
+          <Row gutter={8} style={{ marginTop: '20px', display: 'flex', justifyContent: 'space-between' }}>
+            <Col span={8} style={{ minWidth: '190px' }}>
               <Column title="ToDo" issues={issues.todo} columnId="todo" />
             </Col>
-            <Col span={8}>
+            <Col span={8} style={{ minWidth: '190px' }}>
               <Column title="In Progress" issues={issues.inProgress} columnId="inProgress" />
             </Col>
-            <Col span={8}>
+            <Col span={8} style={{ minWidth: '190px' }}>
               <Column title="Done" issues={issues.done} columnId="done" />
             </Col>
           </Row>
 
           {createPortal(
             <DragOverlay>
-              {activeIssue ? (
+              {activeIssue && (
                 <IssueCard
                   id={activeIssue.id}
                   title={activeIssue.title}
@@ -131,7 +168,7 @@ const KanbanBoard = () => {
                   url={activeIssue.url}
                   columnId=""
                 />
-              ) : null}
+              )}
             </DragOverlay>,
             document.body
           )}
