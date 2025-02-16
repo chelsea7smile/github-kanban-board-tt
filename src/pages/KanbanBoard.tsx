@@ -1,27 +1,15 @@
 import { useEffect, useState } from 'react';
-import { Input, Button, Layout, Typography, Row, Col, message } from 'antd';
+import { Input, Button, Layout, Typography, Row, Col, message, Select } from 'antd';
 import { DndContext, closestCorners, DragOverlay, DragStartEvent, DragEndEvent } from '@dnd-kit/core';
 import { createPortal } from 'react-dom';
 import Column from '../components/Column';
 import IssueCard from '../components/IssueCard';
 import { fetchIssues } from '../api/github';
 import { useIssueStore } from '../store/useIssueStore';
+import { Issue } from '../types/Issue';
 
 const { Header, Content } = Layout;
 const { Title } = Typography;
-
-interface Issue {
-  id: number;
-  title: string;
-  number: number;
-  user: {
-    login: string;
-    avatar_url: string;
-  };
-  url: string;
-  assignee: null | { login: string };
-  state: 'open' | 'closed';
-}
 
 const COLUMN_KEYS = ['todo', 'inProgress', 'done'] as const;
 type ColumnKey = (typeof COLUMN_KEYS)[number];
@@ -32,6 +20,15 @@ const KanbanBoard = () => {
   const [repoUrl, setRepoUrl] = useState<string>(() => localStorage.getItem(STORAGE_KEY_REPO) || '');
   const [loading, setLoading] = useState<boolean>(false);
   const [activeIssueId, setActiveIssueId] = useState<number | null>(null);
+
+  const [isMobile, setIsMobile] = useState<boolean>(window.innerWidth <= 768);
+  const [selectedColumn, setSelectedColumn] = useState<ColumnKey>('todo');
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const { issues, setIssues, loadIssuesFromStorage } = useIssueStore();
 
@@ -103,7 +100,7 @@ const KanbanBoard = () => {
     if (movedIssueIndex === -1) return;
   
     const [movedIssue] = updatedIssues[sourceColumnId].splice(movedIssueIndex, 1);
-    updatedIssues[destinationColumnId] = [...updatedIssues[destinationColumnId], movedIssue];
+    updatedIssues[destinationColumnId] = [movedIssue, ...updatedIssues[destinationColumnId]];
   
     setIssues(updatedIssues);
   };
@@ -122,16 +119,23 @@ const KanbanBoard = () => {
 
       <Content style={{ maxWidth: '1400px', margin: '20px auto' }}>
         <Input
+          data-cy="repo-url-input"
           placeholder="Enter GitHub repo URL (e.g. https://github.com/facebook/react)"
           value={repoUrl}
           onChange={(e) => setRepoUrl(e.target.value)}
           style={{ marginBottom: '10px' }}
         />
-        <Button type="primary" onClick={handleLoadIssues} block loading={loading}>
+        <Button
+          data-cy="load-issues-btn"
+          type="primary" 
+          onClick={handleLoadIssues} 
+          block 
+          loading={loading}>
           {loading ? 'Loading...' : 'Load Issues'}
         </Button>
 
         <Button 
+          data-cy="reset-board-btn"
           danger 
           onClick={handleResetBoard} 
           block 
@@ -145,17 +149,42 @@ const KanbanBoard = () => {
           onDragStart={handleDragStart} 
           onDragEnd={handleDragEnd}
         >
-          <Row gutter={8} style={{ marginTop: '20px', display: 'flex', justifyContent: 'space-between' }}>
-            <Col span={8} style={{ minWidth: '190px' }}>
-              <Column title="ToDo" issues={issues.todo} columnId="todo" />
-            </Col>
-            <Col span={8} style={{ minWidth: '190px' }}>
-              <Column title="In Progress" issues={issues.inProgress} columnId="inProgress" />
-            </Col>
-            <Col span={8} style={{ minWidth: '190px' }}>
-              <Column title="Done" issues={issues.done} columnId="done" />
-            </Col>
-          </Row>
+          {isMobile ? (
+            <>
+              <Select
+                value={selectedColumn}
+                onChange={(value) => setSelectedColumn(value)}
+                style={{ width: '100%', marginTop: '20px', marginBottom: '20px' }}
+              >
+                <Select.Option value="todo">ToDo</Select.Option>
+                <Select.Option value="inProgress">In Progress</Select.Option>
+                <Select.Option value="done">Done</Select.Option>
+              </Select>
+              <Column
+                title={
+                  selectedColumn === 'todo'
+                    ? 'ToDo'
+                    : selectedColumn === 'inProgress'
+                    ? 'In Progress'
+                    : 'Done'
+                }
+                issues={issues[selectedColumn]}
+                columnId={selectedColumn}
+              />
+            </>
+          ) : (
+            <Row gutter={8} style={{ marginTop: '20px', display: 'flex', justifyContent: 'space-between' }}>
+              <Col span={8} style={{ minWidth: '190px' }}>
+                <Column title="ToDo" issues={issues.todo} columnId="todo" />
+              </Col>
+              <Col span={8} style={{ minWidth: '190px' }}>
+                <Column title="In Progress" issues={issues.inProgress} columnId="inProgress" />
+              </Col>
+              <Col span={8} style={{ minWidth: '190px' }}>
+                <Column title="Done" issues={issues.done} columnId="done" />
+              </Col>
+            </Row>
+          )}
 
           {createPortal(
             <DragOverlay>
@@ -165,8 +194,10 @@ const KanbanBoard = () => {
                   title={activeIssue.title}
                   number={activeIssue.number}
                   user={activeIssue.user}
-                  url={activeIssue.url}
-                  columnId=""
+                  htmlUrl={activeIssue.html_url}
+                  columnId="" 
+                  comments={0} 
+                  createdAt={''}
                 />
               )}
             </DragOverlay>,

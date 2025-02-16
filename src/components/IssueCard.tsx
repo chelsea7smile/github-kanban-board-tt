@@ -1,50 +1,95 @@
+import React from 'react';
 import { Card, Typography, Avatar } from 'antd';
+import { ArrowRightOutlined, CommentOutlined } from '@ant-design/icons';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { IssueCardProps } from '../types/IssueCardProps';
 
 const { Title, Text } = Typography;
 
-interface IssueCardProps {
-  id: number;
-  title: string;
-  number: number;
-  user: {
-    login: string;
-    avatar_url: string;
-  };
-  url: string;
-  columnId: string;
-}
-
-const IssueCard: React.FC<IssueCardProps> = ({ id, title, number, user, url, columnId }) => {
+const IssueCard: React.FC<IssueCardProps> = ({
+  id,
+  title,
+  number,
+  user,
+  htmlUrl,
+  columnId,
+  comments,
+  createdAt,
+}) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: id.toString(),
     data: { column: columnId },
   });
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
+  const cardStyle: React.CSSProperties = {
     transition: transition || 'transform 0.2s ease-in-out',
     marginBottom: '10px',
-    cursor: 'grab',
     opacity: isDragging ? 0.5 : 1,
+    userSelect: 'none',
   };
+
+  const dragTransform = CSS.Transform.toString(transform);
+  if (dragTransform) {
+    cardStyle.transform = dragTransform;
+  }
+
+  const formattedDate = isNaN(Date.parse(createdAt))
+    ? 'Unknown'
+    : new Date(createdAt).toLocaleDateString();
 
   return (
     <Card
       hoverable
-      ref={setNodeRef}
-      {...attributes}
-      {...listeners}
-      style={style}
-      onClick={() => window.open(url, '_blank')}
+      data-cy={`issue-${id}`}
+      style={cardStyle}
     >
-      <Title level={5} style={{ marginBottom: '5px' }}>
-        #{number} {title}
+      <Title
+        level={5}
+        style={{
+          marginBottom: '5px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        <span
+          ref={setNodeRef}
+          {...attributes}
+          {...listeners}
+          className="drag-handle"
+          style={{ cursor: 'grab' }}
+        >
+          #{number} {title}
+        </span>
+
+        <a
+          data-cy={`issue-link-${id}`}
+          href={htmlUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            window.open(htmlUrl, '_blank');
+          }}
+          style={{ marginLeft: '8px' }}
+        >
+          <ArrowRightOutlined />
+        </a>
       </Title>
+
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
         <Avatar src={user.avatar_url} alt={user.login} />
         <Text>{user.login}</Text>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px' }}>
+        <CommentOutlined />
+        <Text>{comments} Comments</Text>
+        <Text type="secondary">
+          Opened: {formattedDate}
+        </Text>
       </div>
     </Card>
   );

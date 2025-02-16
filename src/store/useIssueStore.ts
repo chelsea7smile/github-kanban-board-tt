@@ -1,17 +1,5 @@
 import { create } from 'zustand';
-
-interface Issue {
-  id: number;
-  title: string;
-  number: number;
-  user: {
-    login: string;
-    avatar_url: string;
-  };
-  url: string;
-  assignee: null | { login: string };
-  state: 'open' | 'closed';
-}
+import { Issue } from '../types/Issue';
 
 interface IssueState {
   issues: Record<'todo' | 'inProgress' | 'done', Issue[]>;
