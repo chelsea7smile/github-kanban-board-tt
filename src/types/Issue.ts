@@ -1,4 +1,5 @@
 export interface Issue {
+  createdAt: string;
   created_at: string;
   comments: number;
   id: number;

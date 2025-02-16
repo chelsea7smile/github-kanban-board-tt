@@ -17,7 +17,7 @@ const IssueCard: React.FC<IssueCardProps> = ({
   comments,
   createdAt,
 }) => {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    console.log('IssueCard props:', { id, title, number, comments, createdAt });  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: id.toString(),
     data: { column: columnId },
   });
@@ -37,6 +37,7 @@ const IssueCard: React.FC<IssueCardProps> = ({
   const formattedDate = isNaN(Date.parse(createdAt))
     ? 'Unknown'
     : new Date(createdAt).toLocaleDateString();
+    
 
   return (
     <Card

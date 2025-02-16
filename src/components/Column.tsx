@@ -21,7 +21,6 @@ const Column: React.FC<ColumnProps> = ({ title, issues, columnId }) => {
       style={{
         width: '100%',
         minHeight: '400px',
-        background: '#f0f2f5',
         padding: '0px',
       }}
     >
@@ -33,7 +32,10 @@ const Column: React.FC<ColumnProps> = ({ title, issues, columnId }) => {
           number={issue.number}
           user={issue.user}
           htmlUrl={issue.html_url}
-          columnId={columnId} comments={0} createdAt={''}        />
+          columnId={columnId} 
+          comments={issue.comments}
+          createdAt={issue.createdAt || issue.created_at}
+        />
       ))}
     </Card>
   );
