@@ -1,14 +1,4 @@
-import { useEffect, useState } from "react";
-import {
-  Input,
-  Button,
-  Layout,
-  Typography,
-  Row,
-  Col,
-  message,
-  Select
-} from "antd";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   DndContext,
   closestCorners,
@@ -17,126 +7,110 @@ import {
   DragEndEvent
 } from "@dnd-kit/core";
 import { createPortal } from "react-dom";
-import Column from "../components/Column";
-import IssueCard from "../components/IssueCard";
+import { Layout, message } from "antd";
 import { fetchIssues } from "../api/github";
 import { useIssueStore } from "../store/useIssueStore";
 import { Issue } from "../types/Issue";
+import BoardHeader from "./BoardHeader";
+import BoardColumns from "./BoardColumns";
+import IssueCard from "../components/IssueCard";
 
 const { Content } = Layout;
-const { Title } = Typography;
 
 const COLUMN_KEYS = ["todo", "inProgress", "done"] as const;
 type ColumnKey = (typeof COLUMN_KEYS)[number];
-
 const STORAGE_KEY_REPO = "kanban_repo_url";
 
-const KanbanBoard = () => {
+const KanbanBoard: React.FC = () => {
   const [repoUrl, setRepoUrl] = useState<string>(
     () => localStorage.getItem(STORAGE_KEY_REPO) || ""
   );
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState(false);
+
   const [activeIssueId, setActiveIssueId] = useState<number | null>(null);
-  const [isMobile, setIsMobile] = useState<boolean>(window.innerWidth <= 768);
-  const [selectedColumn, setSelectedColumn] = useState<ColumnKey>("todo");
+
+  const [dragOverlaySize, setDragOverlaySize] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
 
   const { issues, setIssues, loadIssuesFromStorage } = useIssueStore();
 
   useEffect(() => {
     loadIssuesFromStorage();
-  }, []);
-
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth <= 768);
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
+  }, [loadIssuesFromStorage]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_REPO, repoUrl);
   }, [repoUrl]);
 
-  const handleLoadIssues = async () => {
+  const loadIssues = useCallback(async () => {
     if (!repoUrl.trim()) {
-      message.error("Please enter a GitHub repo URL");
-      return;
+      return message.error("Please enter a GitHub repo URL");
     }
-
     setLoading(true);
     try {
       const data: Issue[] = await fetchIssues(repoUrl);
-      console.log("Raw issues from API:", data);
-
-      const transformedIssues = data.map((issue) => ({
+      const transformed = data.map((issue) => ({
         ...issue,
         createdAt: issue.created_at
       }));
-      console.log("Transformed issues:", transformedIssues);
-
-      const sortedIssues: Record<ColumnKey, Issue[]> = {
-        todo: transformedIssues.filter(
+      const sorted: Record<ColumnKey, Issue[]> = {
+        todo: transformed.filter(
           (issue) => !issue.assignee && issue.state === "open"
         ),
-        inProgress: transformedIssues.filter(
+        inProgress: transformed.filter(
           (issue) => issue.assignee && issue.state === "open"
         ),
-        done: transformedIssues.filter((issue) => issue.state === "closed")
+        done: transformed.filter((issue) => issue.state === "closed")
       };
-
-      setIssues(sortedIssues);
-    } catch (error) {
+      setIssues(sorted);
+    } catch {
       message.error("Failed to load issues");
     }
     setLoading(false);
-  };
+  }, [repoUrl, setIssues]);
 
-  const handleResetBoard = () => {
+  const resetBoard = () => {
     localStorage.removeItem(STORAGE_KEY_REPO);
     setRepoUrl("");
-
-    setIssues({
-      todo: [],
-      inProgress: [],
-      done: []
-    });
-
+    setIssues({ todo: [], inProgress: [], done: [] });
     message.success("Board has been reset.");
   };
 
-  // DnD
-  const handleDragStart = (event: DragStartEvent) => {
-    setActiveIssueId(Number(event.active.id));
+  const handleDragStart = (e: DragStartEvent) => {
+    setActiveIssueId(Number(e.active.id));
+  
+    const node = document.querySelector(`[data-cy="issue-${e.active.id}"]`) as HTMLElement;
+    if (node) {
+      const rect = node.getBoundingClientRect();
+      setDragOverlaySize({
+        width: rect.width,
+        height: rect.height,
+      });
+    }
   };
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = (e: DragEndEvent) => {
     setActiveIssueId(null);
-    if (!event.over) return;
+    setDragOverlaySize(null);
 
-    const activeId = Number(event.active.id);
-    const sourceColumnId = event.active.data.current?.column as ColumnKey;
-    const destinationColumnId = event.over.data.current?.column as ColumnKey;
+    if (!e.over) return;
+    const activeId = Number(e.active.id);
+    const source = e.active.data.current?.column as ColumnKey;
+    const destination = e.over.data.current?.column as ColumnKey;
+    if (!source || !destination || source === destination) return;
 
-    if (!sourceColumnId || !destinationColumnId || sourceColumnId === destinationColumnId)
-      return;
-
-    const updatedIssues: Record<ColumnKey, Issue[]> = {
+    const updated: Record<ColumnKey, Issue[]> = {
       todo: [...issues.todo],
       inProgress: [...issues.inProgress],
       done: [...issues.done]
     };
-
-    const movedIssueIndex = updatedIssues[sourceColumnId].findIndex(
-      (issue) => issue.id === activeId
-    );
-    if (movedIssueIndex === -1) return;
-
-    const [movedIssue] = updatedIssues[sourceColumnId].splice(movedIssueIndex, 1);
-    updatedIssues[destinationColumnId] = [
-      movedIssue,
-      ...updatedIssues[destinationColumnId]
-    ];
-
-    setIssues(updatedIssues);
+    const idx = updated[source].findIndex((issue) => issue.id === activeId);
+    if (idx === -1) return;
+    const [moved] = updated[source].splice(idx, 1);
+    updated[destination] = [moved, ...updated[destination]];
+    setIssues(updated);
   };
 
   const activeIssue: Issue | null =
@@ -148,87 +122,30 @@ const KanbanBoard = () => {
   return (
     <Layout>
       <Content style={{ maxWidth: "1200px", margin: "0 auto", padding: "20px" }}>
-        <Title level={2} style={{ textAlign: "center" }}>
-          GitHub Kanban Board
-        </Title>
-
-        <Input
-          data-cy="repo-url-input"
-          placeholder="Enter GitHub repo URL (e.g. https://github.com/facebook/react)"
-          value={repoUrl}
-          onChange={(e) => setRepoUrl(e.target.value)}
-          style={{ marginBottom: "10px" }}
-        />
-
-        <Button
-          data-cy="load-issues-btn"
-          type="primary"
-          onClick={handleLoadIssues}
-          block
+        <BoardHeader
+          repoUrl={repoUrl}
+          setRepoUrl={setRepoUrl}
           loading={loading}
-        >
-          {loading ? "Loading..." : "Load Issues"}
-        </Button>
-
-        <Button
-          data-cy="reset-board-btn"
-          danger
-          onClick={handleResetBoard}
-          block
-          style={{ marginTop: "10px" }}
-        >
-          Reset Board
-        </Button>
+          onLoadIssues={loadIssues}
+          onResetBoard={resetBoard}
+        />
 
         <DndContext
           collisionDetection={closestCorners}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
-          {isMobile ? (
-            <>
-              <Select
-                value={selectedColumn}
-                onChange={(value) => setSelectedColumn(value)}
-                style={{ width: "100%", marginTop: "20px", marginBottom: "20px" }}
-              >
-                <Select.Option value="todo">ToDo</Select.Option>
-                <Select.Option value="inProgress">In Progress</Select.Option>
-                <Select.Option value="done">Done</Select.Option>
-              </Select>
-              <Column
-                title={
-                  selectedColumn === "todo"
-                    ? "ToDo"
-                    : selectedColumn === "inProgress"
-                    ? "In Progress"
-                    : "Done"
-                }
-                issues={issues[selectedColumn]}
-                columnId={selectedColumn}
-              />
-            </>
-          ) : (
-            <Row
-              gutter={8}
-              style={{ marginTop: "20px", display: "flex", justifyContent: "space-between" }}
-            >
-              <Col span={8} style={{ minWidth: "190px" }}>
-                <Column title="ToDo" issues={issues.todo} columnId="todo" />
-              </Col>
-              <Col span={8} style={{ minWidth: "190px" }}>
-                <Column title="In Progress" issues={issues.inProgress} columnId="inProgress" />
-              </Col>
-              <Col span={8} style={{ minWidth: "190px" }}>
-                <Column title="Done" issues={issues.done} columnId="done" />
-              </Col>
-            </Row>
-          )}
+          <BoardColumns issues={issues} />
 
           {createPortal(
-            <DragOverlay>
+            <DragOverlay adjustScale={false}>
               {activeIssue && (
                 <IssueCard
+                  isOverlay
+                  style={{
+                    width: dragOverlaySize?.width,
+                    height: dragOverlaySize?.height
+                  }}
                   id={activeIssue.id}
                   title={activeIssue.title}
                   number={activeIssue.number}
