@@ -1,6 +1,6 @@
 import React from "react";
-import { Card, Typography, Avatar } from "antd";
-import { ArrowRightOutlined, CommentOutlined } from "@ant-design/icons";
+import { Card, Typography, Avatar, Button, theme } from "antd";
+import { CommentOutlined } from "@ant-design/icons";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { IssueCardProps } from "../types/IssueCardProps";
@@ -24,15 +24,17 @@ const IssueCard: React.FC<ExtendedIssueCardProps> = ({
   isOverlay = false,
   style = {},
 }) => {
+  const { token } = theme.useToken();
   const sortable = !isOverlay
     ? useSortable({ id: id.toString(), data: { column: columnId } })
     : null;
 
   const cardStyle: React.CSSProperties = {
-    ...style, 
+    ...style,
+    position: "relative",
     transition: sortable?.transition || "transform 0.2s ease-in-out",
     marginBottom: "10px",
-    opacity: sortable?.isDragging ? 0.5 : 1,
+    opacity: sortable ? (sortable.isDragging ? 0.5 : 1) : 1,
     userSelect: "none",
   };
 
@@ -46,56 +48,73 @@ const IssueCard: React.FC<ExtendedIssueCardProps> = ({
 
   return (
     <Card hoverable data-cy={`issue-${id}`} style={cardStyle}>
-      <Title
-        level={5}
-        style={{
-          marginBottom: "5px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
-        {sortable ? (
-          <span
-            ref={sortable.setNodeRef}
-            {...sortable.attributes}
-            {...sortable.listeners}
-            className="drag-handle"
-            style={{ cursor: "grab" }}
-          >
-            #{number} {title}
-          </span>
-        ) : (
-          <span style={{ cursor: "default" }}>
-            #{number} {title}
-          </span>
-        )}
-
-        <a
-          data-cy={`issue-link-${id}`}
-          href={htmlUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={(e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            window.open(htmlUrl, "_blank");
-          }}
-          style={{ marginLeft: "8px" }}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "stretch" }}>
+        <div
+          style={{ flex: 1, paddingRight: "10px", cursor: sortable ? "grab" : "default" }}
+          ref={sortable ? sortable.setNodeRef : undefined}
+          {...(sortable ? sortable.attributes : {})}
+          {...(sortable ? sortable.listeners : {})}
         >
-          <ArrowRightOutlined />
-        </a>
-      </Title>
+          <Title
+            level={5}
+            style={{
+              marginBottom: "5px",
+              display: "flex",
+              alignItems: "center",
+            }}
+          >
+            <span>#{number} {title}</span>
+          </Title>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <Avatar src={user.avatar_url} alt={user.login} />
+            <Text>{user.login}</Text>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "10px" }}>
+            <CommentOutlined />
+            <Text>{comments} Comments</Text>
+            <Text type="secondary">Opened: {formattedDate}</Text>
+          </div>
+        </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-        <Avatar src={user.avatar_url} alt={user.login} />
-        <Text>{user.login}</Text>
-      </div>
-
-      <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "10px" }}>
-        <CommentOutlined />
-        <Text>{comments} Comments</Text>
-        <Text type="secondary">Opened: {formattedDate}</Text>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "60px",
+            color: "#fff",
+          }}
+        >
+          <Button
+            data-cy={`issue-link-${id}`}
+            type="primary"
+            style={{
+              width: "40px",
+              height: "100%",
+              border: "1px solid " + (token?.colorPrimary || "#1890ff"),
+              backgroundColor:"#001529",
+              color: "#fff",
+              padding: 0,
+              borderRadius: "8px",
+            }}
+            draggable={false}
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              window.open(htmlUrl, "_blank");
+            }}
+          >
+            <span
+              style={{
+                display: "inline-block",
+                transform: "rotate(-90deg)",
+                whiteSpace: "nowrap",
+              }}
+            >
+              Go to issue &gt;
+            </span>
+          </Button>
+        </div>
       </div>
     </Card>
   );

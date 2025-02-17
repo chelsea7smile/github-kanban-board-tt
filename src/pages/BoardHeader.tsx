@@ -113,10 +113,14 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
         </div>
         <div data-cy="load-issues-btn">
           <Button
-            
             type="primary"
             onClick={onLoadIssues}
             loading={loading}
+            style={{
+              backgroundColor: "#001529",
+              borderColor: "#001529",
+              color: "#fff",
+            }}
           >
             {loading ? "Loading..." : "Load Issues"}
           </Button>

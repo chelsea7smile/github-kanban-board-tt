@@ -1,11 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import {
-  DndContext,
-  closestCorners,
-  DragOverlay,
-  DragStartEvent,
-  DragEndEvent
-} from "@dnd-kit/core";
+import { DndContext, closestCorners, DragOverlay } from "@dnd-kit/core";
 import { createPortal } from "react-dom";
 import { Layout, message } from "antd";
 import { fetchIssues } from "../api/github";
@@ -14,26 +8,16 @@ import { Issue } from "../types/Issue";
 import BoardHeader from "./BoardHeader";
 import BoardColumns from "./BoardColumns";
 import IssueCard from "../components/IssueCard";
+import { useDragDrop } from "../hooks/useDragDrop";
+import { STORAGE_KEY_REPO } from "../constants/constants";
 
 const { Content } = Layout;
-const COLUMN_KEYS = ["todo", "inProgress", "done"] as const;
-type ColumnKey = (typeof COLUMN_KEYS)[number];
-const STORAGE_KEY_REPO = "kanban_repo_url";
-
-const arrayMove = <T,>(array: T[], fromIndex: number, toIndex: number): T[] => {
-  const newArray = [...array];
-  const [movedItem] = newArray.splice(fromIndex, 1);
-  newArray.splice(toIndex, 0, movedItem);
-  return newArray;
-};
 
 const KanbanBoard: React.FC = () => {
   const [repoUrl, setRepoUrl] = useState<string>(
     () => localStorage.getItem(STORAGE_KEY_REPO) || ""
   );
   const [loading, setLoading] = useState(false);
-  const [activeIssueId, setActiveIssueId] = useState<number | null>(null);
-  const [dragOverlaySize, setDragOverlaySize] = useState<{ width: number; height: number } | null>(null);
   const { issues, setIssues, loadIssuesFromStorage } = useIssueStore();
 
   useEffect(() => {
@@ -55,12 +39,12 @@ const KanbanBoard: React.FC = () => {
       const data: Issue[] = await fetchIssues(repoUrl);
       const transformed = data.map(issue => ({
         ...issue,
-        createdAt: issue.created_at
+        createdAt: issue.created_at,
       }));
-      const sorted: Record<ColumnKey, Issue[]> = {
+      const sorted = {
         todo: transformed.filter(issue => !issue.assignee && issue.state === "open"),
         inProgress: transformed.filter(issue => issue.assignee && issue.state === "open"),
-        done: transformed.filter(issue => issue.state === "closed")
+        done: transformed.filter(issue => issue.state === "closed"),
       };
       setIssues(sorted, repoUrl);
     } catch {
@@ -76,56 +60,11 @@ const KanbanBoard: React.FC = () => {
     message.success("Board has been reset.");
   };
 
-  const handleDragStart = (e: DragStartEvent) => {
-    setActiveIssueId(Number(e.active.id));
-    const node = document.querySelector(`[data-cy="issue-${e.active.id}"]`) as HTMLElement;
-    if (node) {
-      const rect = node.getBoundingClientRect();
-      setDragOverlaySize({
-        width: rect.width,
-        height: rect.height,
-      });
-    }
-  };
-
-  const handleDragEnd = (e: DragEndEvent) => {
-    setActiveIssueId(null);
-    setDragOverlaySize(null);
-    if (!e.over) return;
-    
-    const activeId = Number(e.active.id);
-    const source = e.active.data.current?.column as ColumnKey;
-    const destination = e.over.data.current?.column as ColumnKey;
-    if (!source || !destination) return;
-    
-    if (source === destination) {
-      const currentColumn = issues[source];
-      const fromIndex = currentColumn.findIndex(issue => issue.id === activeId);
-      const toIndex =
-        e.over && e.over.id
-          ? currentColumn.findIndex(issue => issue.id === Number(e.over!.id))
-          : currentColumn.length - 1;
-      if (fromIndex === -1 || toIndex === -1) return;
-      const newColumn = arrayMove(currentColumn, fromIndex, toIndex);
-      const newIssues: Record<ColumnKey, Issue[]> = {
-        ...issues,
-        [source]: newColumn
-      };
-      setIssues(newIssues, repoUrl);
-      return;
-    }
-    
-    const updated: Record<ColumnKey, Issue[]> = {
-      todo: [...issues.todo],
-      inProgress: [...issues.inProgress],
-      done: [...issues.done]
-    };
-    const idx = updated[source].findIndex(issue => issue.id === activeId);
-    if (idx === -1) return;
-    const [moved] = updated[source].splice(idx, 1);
-    updated[destination] = [moved, ...updated[destination]];
-    setIssues(updated, repoUrl);
-  };
+  const { activeIssueId, dragOverlaySize, handleDragStart, handleDragEnd } = useDragDrop({
+    issues,
+    setIssues,
+    repoUrl,
+  });
 
   const activeIssue: Issue | null =
     issues.todo.find(issue => issue.id === activeIssueId) ||
@@ -158,7 +97,7 @@ const KanbanBoard: React.FC = () => {
                   isOverlay
                   style={{
                     width: dragOverlaySize?.width,
-                    height: dragOverlaySize?.height
+                    height: dragOverlaySize?.height,
                   }}
                   id={activeIssue.id}
                   title={activeIssue.title}
