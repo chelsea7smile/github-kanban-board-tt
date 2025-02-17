@@ -104,20 +104,23 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
           marginBottom: 10
         }}
       >
-        <Input
-          data-cy="repo-url-input"
-          placeholder="Enter GitHub repo URL (e.g. https://github.com/facebook/react)"
-          value={repoUrl}
-          onChange={(e) => setRepoUrl(e.target.value)}
-        />
-        <Button
-          data-cy="load-issues-btn"
-          type="primary"
-          onClick={onLoadIssues}
-          loading={loading}
-        >
-          {loading ? "Loading..." : "Load Issues"}
-        </Button>
+        <div data-cy="repo-url-input">
+          <Input
+            placeholder="Enter GitHub repo URL (e.g. https://github.com/facebook/react)"
+            value={repoUrl}
+            onChange={(e) => setRepoUrl(e.target.value)}
+          />
+        </div>
+        <div data-cy="load-issues-btn">
+          <Button
+            
+            type="primary"
+            onClick={onLoadIssues}
+            loading={loading}
+          >
+            {loading ? "Loading..." : "Load Issues"}
+          </Button>
+        </div>
       </div>
 
       {repoInfo && (

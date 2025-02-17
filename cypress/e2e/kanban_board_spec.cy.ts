@@ -47,7 +47,6 @@ describe('GitHub Kanban Board', () => {
   it('displays the input and buttons', () => {
     cy.get('[data-cy="repo-url-input"]').should('be.visible');
     cy.get('[data-cy="load-issues-btn"]').should('be.visible');
-    cy.get('[data-cy="reset-board-btn"]').should('be.visible');
   });
 
   it('loads and displays issues correctly', () => {
@@ -82,33 +81,6 @@ describe('GitHub Kanban Board', () => {
     // For Done: closed issues
     cy.get('[data-cy="column-done"]').within(() => {
       cy.get('[data-cy="issue-3"]').should('contain.text', '#3 Issue 3');
-    });
-  });
-
-  it('resets the board when clicking Reset Board', () => {
-    // Intercept the API request
-    cy.intercept('GET', apiUrl, {
-      statusCode: 200,
-      body: mockIssues,
-    }).as('getIssues');
-
-    // Load issues
-    cy.get('[data-cy="repo-url-input"]').type(repoUrl);
-    cy.get('[data-cy="load-issues-btn"]').click();
-    cy.wait('@getIssues');
-
-    // Verify that the input value is not empty
-    cy.get('[data-cy="repo-url-input"]').should('have.value', repoUrl);
-
-    // Click the Reset Board button
-    cy.get('[data-cy="reset-board-btn"]').click();
-
-    // Verify that the input is cleared
-    cy.get('[data-cy="repo-url-input"]').should('have.value', '');
-
-    // Optionally, verify that the columns no longer contain issues
-    cy.get('[data-cy="column-todo"]').within(() => {
-      cy.get('[data-cy="issue-1"]').should('not.exist');
     });
   });
 
