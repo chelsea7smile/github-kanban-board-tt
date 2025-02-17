@@ -2,7 +2,10 @@ const GITHUB_API_URL = 'https://api.github.com/repos';
 
 export const fetchIssues = async (repoUrl: string) => {
   const repoPath = extractRepoPath(repoUrl);
-  const response = await fetch(`${GITHUB_API_URL}/${repoPath}/issues`);
+  const token = import.meta.env.VITE_GITHUB_TOKEN;
+  console.log("GitHub Token:", token);
+  const headers: HeadersInit = token ? { Authorization: `token ${token}` } : {};
+  const response = await fetch(`${GITHUB_API_URL}/${repoPath}/issues`, { headers });
   if (!response.ok) {
     throw new Error('Failed to fetch issues');
   }
@@ -11,7 +14,9 @@ export const fetchIssues = async (repoUrl: string) => {
 
 export const fetchRepoInfo = async (repoUrl: string) => {
   const repoPath = extractRepoPath(repoUrl);
-  const response = await fetch(`${GITHUB_API_URL}/${repoPath}`);
+  const token = import.meta.env.VITE_GITHUB_TOKEN;
+  const headers: HeadersInit = token ? { Authorization: `token ${token}` } : {};
+  const response = await fetch(`${GITHUB_API_URL}/${repoPath}`, { headers });
   if (!response.ok) {
     throw new Error('Failed to fetch repository info');
   }

@@ -14,7 +14,6 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
   setRepoUrl,
   loading,
   onLoadIssues,
-  onResetBoard
 }) => {
   const [savedRepos, setSavedRepos] = useState<string[]>([]);
   const [repoInfo, setRepoInfo] = useState<RepoInfo | null>(null);
@@ -40,7 +39,9 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
         }
         const owner = parts[3];
         const repo = parts[4];
-        const res = await fetch(`https://api.github.com/repos/${owner}/${repo}`);
+        const token = import.meta.env.VITE_GITHUB_TOKEN;
+        const headers: HeadersInit = token ? { Authorization: `token ${token}` } : {};
+        const res = await fetch(`https://api.github.com/repos/${owner}/${repo}`, { headers });
         if (!res.ok) {
           setRepoInfo(null);
           return;
@@ -50,7 +51,7 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
           ownerLogin: owner,
           ownerUrl: `https://github.com/${owner}`,
           repoHtmlUrl: data.html_url,
-          stars: data.stargazers_count
+          stars: data.stargazers_count,
         });
       } catch (error) {
         console.error("Failed to fetch repo info:", error);
@@ -143,16 +144,6 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
           </Text>
         </div>
       )}
-
-      <Button
-        data-cy="reset-board-btn"
-        danger
-        onClick={onResetBoard}
-        block
-        style={{ marginTop: 10 }}
-      >
-        Reset Board
-      </Button>
     </div>
   );
 };
