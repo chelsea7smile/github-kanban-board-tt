@@ -1,50 +1,62 @@
-# React + TypeScript + Vite
+GitHub Kanban Board
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+GitHub Kanban Board is a web application that displays GitHub repository issues as a Kanban board.
+The application is built using React 18, TypeScript, Ant Design (for UI), dnd-kit (for drag-and-drop), and Zustand (for state management) and Cypress for tests.
 
-Currently, two official plugins are available:
+Getting Started
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Prerequisites
+	•	Node.js (v14 or higher is recommended)
+	•	npm or Yarn
 
-## Expanding the ESLint configuration
+1. Clone the Repository
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
+git clone https://github.com/chelsea7smile/github-kanban-board-tt.git
+cd github-kanban-board-tt
 
-- Configure the top-level `parserOptions` property like this:
+2. Install Dependencies
 
-```js
-export default tseslint.config({
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
+Using npm:
 
-- Replace `tseslint.configs.recommended` to `tseslint.configs.recommendedTypeChecked` or `tseslint.configs.strictTypeChecked`
-- Optionally add `...tseslint.configs.stylisticTypeChecked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and update the config:
+npm install
 
-```js
-// eslint.config.js
-import react from 'eslint-plugin-react'
+Or using Yarn:
 
-export default tseslint.config({
-  // Set the react version
-  settings: { react: { version: '18.3' } },
-  plugins: {
-    // Add the react plugin
-    react,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended rules
-    ...react.configs.recommended.rules,
-    ...react.configs['jsx-runtime'].rules,
-  },
-})
-```
+yarn install
+
+3. Set Up Environment Variables
+
+Create a .env file in the root of your project and add your GitHub personal access token (PAT):
+
+REACT_APP_GITHUB_TOKEN=your_personal_github_token_here
+
+	Note:
+To generate a GitHub PAT, go to your GitHub account settings → Developer settings → Personal access tokens and create a new token with read-only permissions for public repositories.
+If you’re using Vite, use VITE_GITHUB_TOKEN and access it via import.meta.env.VITE_GITHUB_TOKEN.
+
+4. Run the Application Locally
+
+Using npm:
+
+npm start
+
+Or using Yarn:
+
+yarn start
+
+The application will run at http://localhost:3000.
+
+5. Run End-to-End Tests with Cypress
+
+To open Cypress:
+
+npm run cypress:open
+
+Or
+
+yarn cypress:open
+
+	Note: Drag-and-drop functionality might not be fully covered in tests.
+
+
+This README provides all the necessary instructions to run the project locally and details the implemented requirements.
